@@ -685,29 +685,28 @@ func (c *ProfileConfig) Validate() error {
 	if c.HasSSOSession() && !c.HasSSOStartURL() {
 		return fmt.Errorf("profile '%s' has sso_session but no sso_start_url", c.ProfileName)
 	}
-
-	n := 0
+	credentialSources := []string{}
 	if c.HasSSOStartURL() {
-		n++
+		credentialSources = append(credentialSources, "sso_start_url")
 	}
 	if c.HasWebIdentity() {
-		n++
+		credentialSources = append(credentialSources, "web_identity_token_*")
 	}
 	if c.HasCredentialProcess() {
-		n++
+		credentialSources = append(credentialSources, "credential_process")
 	}
 	if c.HasSourceProfile() {
-		n++
+		credentialSources = append(credentialSources, "source_profile")
 	}
 	if c.HasRole() &&
 		// these cases require the role to be set in addition, so it's part of
 		// their credential.
 		!c.HasSourceProfile() &&
 		!c.HasWebIdentity() {
-		n++
+		credentialSources = append(credentialSources, "role_arn (only)")
 	}
-	if n > 1 {
-		return fmt.Errorf("profile '%s' has more than one source of credentials", c.ProfileName)
+	if len(credentialSources) > 1 {
+		return fmt.Errorf("profile '%s' has more than one source of credentials: %s", c.ProfileName, strings.Join(credentialSources, ", "))
 	}
 
 	return nil

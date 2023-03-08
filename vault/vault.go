@@ -271,7 +271,8 @@ func (t *tempCredsCreator) GetProviderForProfile(config *ProfileConfig) (aws.Cre
 		return NewAssumeRoleWithWebIdentityProvider(t.Keyring.Keyring, config, !t.DisableCache)
 	}
 
-	if config.HasCredentialProcess() {
+	storedCredentialForProfile := t.Keyring.HasStoredCredential(config.ProfileName)
+	if !storedCredentialForProfile && config.HasCredentialProcess() {
 		log.Printf("profile %s: using credential process", config.ProfileName)
 		return NewCredentialProcessProvider(t.Keyring.Keyring, config, !t.DisableCache)
 	}
@@ -308,16 +309,8 @@ func (t *tempCredsCreator) canUseGetSessionToken(c *ProfileConfig) (bool, string
 	}
 
 	if c.IsChained() {
-		if !c.ChainedFromProfile.HasMfaSerial() {
-			return false, fmt.Sprintf("profile '%s' has no MFA serial defined", c.ChainedFromProfile.ProfileName)
-		}
-
-		if !c.HasMfaSerial() && c.ChainedFromProfile.HasMfaSerial() {
-			return false, fmt.Sprintf("profile '%s' has no MFA serial defined", c.ProfileName)
-		}
-
-		if c.ChainedFromProfile.MfaSerial != c.MfaSerial {
-			return false, fmt.Sprintf("MFA serial doesn't match profile '%s'", c.ChainedFromProfile.ProfileName)
+		if !c.HasMfaSerial() && !c.ChainedFromProfile.HasMfaSerial() {
+			return false, fmt.Sprintf("no MFA serial defined in profile %s or source profile %s", c.ChainedFromProfile.ProfileName, c.ProfileName)
 		}
 
 		if c.ChainedFromProfile.AssumeRoleDuration > roleChainingMaximumDuration {
